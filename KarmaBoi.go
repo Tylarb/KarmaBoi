@@ -2,14 +2,31 @@ package main
 
 import (
 	"fmt"
+	"log"
 	"os"
+
+	"github.com/nlopes/slack"
 )
 
-var SLACK_BOT_TOKEN = os.Getenv("SLACK_BOT_TOKEN")
-var SLACK_BOT_NAME = os.Getenv("SLACK_BOT_NAME")
+// Get bot name and token from env
+var slackBotToken = os.Getenv("SLACK_BOT_TOKEN")
+var slackBotName = os.Getenv("SLACK_BOT_NAME")
 
 func main() {
-	fmt.Println("hello, world!")
-	fmt.Println("slack token:", SLACK_BOT_TOKEN)
-	fmt.Println("slack name:", SLACK_BOT_NAME)
+	fmt.Println("slack token:", slackBotToken)
+	fmt.Println("slack name:", slackBotName)
+
+	fmt.Println("starting bot")
+	api := slack.New(slackBotToken)
+	users, err := api.GetUsers()
+	if err != nil {
+		log.Fatal(err)
+	}
+	for _, user := range users {
+		fmt.Printf("name: %s, id: %s\n", user.Name, user.ID)
+		if user.Name == slackBotName {
+			fmt.Printf("Found bot ID %s for name %s\n", user.ID, user.Name)
+		}
+	}
+
 }
