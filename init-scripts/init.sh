@@ -2,6 +2,8 @@
 
 # Released under MIT license, copyright 2018 Tyler Ramer
 
+export GOBIN=~/Go/src/github.com/Tylarb/KarmaBoi-Go/bin
+
 DIR=`pwd`
 export BOT_HOME=~/.KarmaBoi
 
