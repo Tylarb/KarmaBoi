@@ -9,7 +9,6 @@ Released under MIT license, copyright 2018 Tyler Ramer
 package main
 
 import (
-	"fmt"
 	"os"
 
 	log "github.com/sirupsen/logrus"
@@ -44,6 +43,7 @@ func getBotID(botName string, sc *slack.Client) (botID string) {
 func main() {
 	sc := slack.New(slackBotToken)
 	botID := getBotID(slackBotName, sc)
+	log.WithField("ID", botID).Debug("Bot ID returned")
 	rtm := sc.NewRTM()
 	go rtm.ManageConnection()
 	log.Info("Connected to slack")
@@ -52,11 +52,20 @@ func main() {
 		switch ev := slackEvent.Data.(type) {
 		case *slack.HelloEvent:
 			// Ignored
+		case *slack.ConnectedEvent:
+			log.WithFields(log.Fields{"Connection Counter:": ev.ConnectionCount, "Infos": ev.Info})
 		case *slack.MessageEvent:
-			channel := ev.Channel
-			log.WithField(channel, channel).Debug("message on channel:")
-			out := fmt.Sprintf("Hello my name is %s", botID)
-			rtm.SendMessage(rtm.NewOutgoingMessage(out, channel))
+			log.WithFields(log.Fields{"Channel": ev.Channel, "message": ev.Text}).Debug("message event:")
+			rtm.SendMessage(rtm.NewOutgoingMessage("Hi I'm KarmaBoi", ev.Channel))
+		case *slack.LatencyReport:
+			log.WithField("Latency", ev.Value).Debug("Latency Reported")
+		case *slack.RTMError:
+			log.WithField("Error", ev.Error()).Error("RTM Error")
+		case *slack.InvalidAuthEvent:
+			log.Error("Invalid Credentials")
+			return
+		default:
+			log.WithField("Data", ev).Debug("Some other data type")
 
 		}
 
