@@ -56,11 +56,27 @@ func main() {
 			log.WithFields(log.Fields{"Connection Counter:": ev.ConnectionCount, "Infos": ev.Info})
 		case *slack.MessageEvent:
 			log.WithFields(log.Fields{"Channel": ev.Channel, "message": ev.Text}).Debug("message event:")
-			rtm.SendMessage(rtm.NewOutgoingMessage("Hi I'm KarmaBoi", ev.Channel))
+			// send message to parser func
+			out, err := parse(ev)
+			if err != nil {
+				log.WithField("ERROR", err).Error("parse message failed")
+			}
+			switch {
+			case out.isEphemeral == true:
+				params := slack.PostMessageParameters{
+					AsUser: true,
+				}
+				_, err := postEphemeral(rtm, out.channel, out.user, out.message, params)
+				if err != nil {
+					log.WithField("ERROR", err).Error("Issue posting ephemeral message")
+				}
+			case out.isEphemeral == false:
+				rtm.SendMessage(rtm.NewOutgoingMessage(out.message, out.channel))
+			}
 		case *slack.LatencyReport:
 			log.WithField("Latency", ev.Value).Debug("Latency Reported")
 		case *slack.RTMError:
-			log.WithField("Error", ev.Error()).Error("RTM Error")
+			log.WithField("ERROR", ev.Error()).Error("RTM Error")
 		case *slack.InvalidAuthEvent:
 			log.Error("Invalid Credentials")
 			return
@@ -71,4 +87,15 @@ func main() {
 
 	}
 
+}
+
+// Cleans up Ephemeral message posting, see issue: https://github.com/nlopes/slack/issues/191
+func postEphemeral(rtm *slack.RTM, channel, user, text string, params slack.PostMessageParameters) (string, error) {
+	return rtm.PostEphemeral(
+		channel,
+		user,
+		slack.MsgOptionText(text, params.EscapeText),
+		slack.MsgOptionAttachments(params.Attachments...),
+		slack.MsgOptionPostMessageParameters(params),
+	)
 }
