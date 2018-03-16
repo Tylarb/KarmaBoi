@@ -35,10 +35,19 @@ type karmaVal struct {
 
 // regex definitions
 
+// name++
 var karmaUp = regexp.MustCompile(`.+\+{2,2}$`)
+
+// name--
 var karmaDown = regexp.MustCompile(`.+-{2,2}$`)
+
+// name~~
 var shameUp = regexp.MustCompile(`.+~{2,2}$`)
+
+// not word characters (== [^0-9A-Za-z_])
 var nonKarma = regexp.MustCompile(`^\W+$`)
+
+// 5 number long, beginning with 7 or 8
 var caseID = regexp.MustCompile(`^[7-8][0-9]{4,4}$`)
 
 // parses all messagess from slack for special commands or karma events
