@@ -105,7 +105,7 @@ func parse(message *slack.MessageEvent) (retMessage, error) {
 		log.WithField("ERROR", err).Info("Failed to adjust karma")
 	}
 	if count > 3 {
-		response = fmt.Sprintf("%s gave various karma\n", slackFMT(message.User))
+		response = fmt.Sprintf("%s gave various karma\n", usrFormat(message.User))
 	} else {
 		retArray = append(retArray, caseLinks[:]...)
 		response = strings.Join(retArray[:], "")
@@ -139,6 +139,6 @@ func responseGen(k karmaVal) (s string) {
 	return
 }
 
-func slackFMT(u string) string {
+func usrFormat(u string) string {
 	return fmt.Sprintf("<@%s>", u)
 }
