@@ -21,6 +21,12 @@
 
 [[projects]]
   branch = "master"
+  name = "github.com/tylarb/TimeCache"
+  packages = ["."]
+  revision = "6cacb12b447e06b9897702b7e420d4b6bd78a184"
+
+[[projects]]
+  branch = "master"
   name = "golang.org/x/crypto"
   packages = ["ssh/terminal"]
   revision = "182114d582623c1caa54f73de9c7224e23a48487"
@@ -37,6 +43,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "a95219c9b2c7981bf9ec09fc0432e0dfef746c87b513c43de1036f224cf6f352"
+  inputs-digest = "006ca8bc93489784b38eec24cfe07238b204952cbd5f97fdb1b8fc5aca2e0b5e"
   solver-name = "gps-cdcl"
   solver-version = 1

@@ -16,9 +16,17 @@ import (
 	"github.com/nlopes/slack"
 )
 
-// Get bot name and token from env
+// Get bot name and token from env, and make sure botID is globally accessible
 var slackBotToken = os.Getenv("SLACK_BOT_TOKEN")
 var slackBotName = os.Getenv("SLACK_BOT_NAME")
+var botID string
+
+// The slack client and RTM messaging are used as an out - rather than passing
+// the SC to each function, define it globally to ease accessed. We do handle
+// errors in the main function, however
+
+var sc *slack.Client
+var rtm *slack.RTM
 
 // log levels, see logrus docs
 func init() {
@@ -41,10 +49,10 @@ func getBotID(botName string, sc *slack.Client) (botID string) {
 }
 
 func main() {
-	sc := slack.New(slackBotToken)
-	botID := getBotID(slackBotName, sc)
+	sc = slack.New(slackBotToken)
+	botID = getBotID(slackBotName, sc)
 	log.WithField("ID", botID).Debug("Bot ID returned")
-	rtm := sc.NewRTM()
+	rtm = sc.NewRTM()
 	go rtm.ManageConnection()
 	log.Info("Connected to slack")
 
@@ -57,21 +65,9 @@ func main() {
 		case *slack.MessageEvent:
 			log.WithFields(log.Fields{"Channel": ev.Channel, "message": ev.Text}).Debug("message event:")
 			// send message to parser func
-			out, err := parse(ev)
+			err := parse(ev)
 			if err != nil {
 				log.WithField("ERROR", err).Error("parse message failed")
-			}
-			switch {
-			case out.isEphemeral == true:
-				params := slack.PostMessageParameters{
-					AsUser: true,
-				}
-				_, err := postEphemeral(rtm, out.channel, out.user, out.message, params)
-				if err != nil {
-					log.WithField("ERROR", err).Error("Issue posting ephemeral message")
-				}
-			case out.isEphemeral == false:
-				rtm.SendMessage(rtm.NewOutgoingMessage(out.message, out.channel))
 			}
 		case *slack.LatencyReport:
 			log.WithField("Latency", ev.Value).Debug("Latency Reported")
@@ -90,7 +86,10 @@ func main() {
 }
 
 // Cleans up Ephemeral message posting, see issue: https://github.com/nlopes/slack/issues/191
-func postEphemeral(rtm *slack.RTM, channel, user, text string, params slack.PostMessageParameters) (string, error) {
+func postEphemeral(rtm *slack.RTM, channel, user, text string) (string, error) {
+	params := slack.PostMessageParameters{
+		AsUser: true,
+	}
 	return rtm.PostEphemeral(
 		channel,
 		user,

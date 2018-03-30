@@ -15,16 +15,20 @@ import (
 
 	"github.com/nlopes/slack"
 	log "github.com/sirupsen/logrus"
+	"github.com/tylarb/TimeCache"
 )
 
 // set URL for expansion here
+// TODO: change to OS env variable
 const baseURL = "http://example.com/"
+const timeout = 5 * 60
 
-type retMessage struct {
+type response struct {
 	message     string
-	isEphemeral bool
 	user        string
 	channel     string
+	isEphemeral bool
+	isIM        bool
 }
 
 type karmaVal struct {
@@ -32,6 +36,8 @@ type karmaVal struct {
 	points int
 	shame  bool
 }
+
+var cache = timeCache.NewSliceCache(timeout)
 
 // regex definitions
 
@@ -51,16 +57,31 @@ var nonKarma = regexp.MustCompile(`^\W+$`)
 var caseID = regexp.MustCompile(`^[7-8][0-9]{4,4}$`)
 
 // parses all messagess from slack for special commands or karma events
-func parse(message *slack.MessageEvent) (retMessage, error) {
+func parse(ev *slack.MessageEvent) (err error) {
+	var atBot = fmt.Sprintf("<@%s>", botID)
+
+	words := strings.Split(ev.Text, " ")
+	switch {
+	case words[0] == atBot:
+		log.WithField("Message", ev.Text).Debug("Instuction for bot")
+	default:
+		err = handleWord(ev, words)
+	}
+
+	return nil
+}
+
+func handleWord(ev *slack.MessageEvent, words []string) (err error) {
+
 	var s string
 	var count int
 	var k karmaVal
 	var name string
-	var response string
-	var err error
-	words := strings.Split(message.Text, " ")
+	var message string
+
 	retArray := []string{}
 	caseLinks := []string{}
+
 	for _, word := range words {
 		switch {
 		case nonKarma.MatchString(word):
@@ -105,13 +126,30 @@ func parse(message *slack.MessageEvent) (retMessage, error) {
 		log.WithField("ERROR", err).Info("Failed to adjust karma")
 	}
 	if count > 3 {
-		response = fmt.Sprintf("%s gave various karma\n", usrFormat(message.User))
+		message = fmt.Sprintf("%s gave various karma\n", usrFormat(ev.User))
 	} else {
 		retArray = append(retArray, caseLinks[:]...)
-		response = strings.Join(retArray[:], "")
+		message = strings.Join(retArray[:], "")
 	}
-	out := retMessage{response, false, message.User, message.Channel}
-	return out, nil
+	var r = response{message, ev.User, ev.Channel, false, false}
+	err = scPrint(r)
+	if err != nil {
+		log.Error("unable to print message to slack")
+		return err
+	}
+	return nil
+
+}
+
+func scPrint(r response) (err error) {
+	switch {
+	case r.isEphemeral:
+		_, err = postEphemeral(rtm, r.channel, r.user, r.message)
+	default:
+		rtm.SendMessage(rtm.NewOutgoingMessage(r.message, r.channel))
+		err = nil
+	}
+	return
 }
 
 func karmaAdd(name string) (karma int, err error) {
