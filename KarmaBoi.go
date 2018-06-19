@@ -13,25 +13,53 @@ import (
 
 	log "github.com/sirupsen/logrus"
 
+	"github.com/cloudfoundry-community/go-cfenv"
 	"github.com/nlopes/slack"
 )
 
+// CF database service
+const serviceLable = "elephantsql"
+
+var conStr string
+
 // Get bot name and token from env, and make sure botID is globally accessible
-var slackBotToken = os.Getenv("SLACK_BOT_TOKEN")
-var slackBotName = os.Getenv("SLACK_BOT_NAME")
-var botID string
+var (
+	slackBotToken = os.Getenv("SLACK_BOT_TOKEN")
+	slackBotName  = os.Getenv("SLACK_BOT_NAME")
+	botID         string
+)
 
 // The slack client and RTM messaging are used as an out - rather than passing
 // the SC to each function, define it globally to ease accessed. We do handle
 // errors in the main function, however
 
-var sc *slack.Client
-var rtm *slack.RTM
+var (
+	sc  *slack.Client
+	rtm *slack.RTM
+)
 
 // log levels, see logrus docs
 func init() {
 	log.SetOutput(os.Stdout)
 	log.SetLevel(log.DebugLevel)
+
+	appEnv, err := cfenv.Current()
+	if err != nil {
+		log.Fatal("Could not get cloud foundry environment details")
+	}
+	dbService, err := appEnv.Services.WithLabel(serviceLable)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	if len(dbService) != 1 {
+		log.WithField("serviceLable", serviceLable).Fatal("It appears that more than one service with the serviceLable is attached to your app\nPlease ensure there is only one database instance attached")
+	}
+	var ok bool
+	conStr, ok = dbService[0].CredentialString("uri")
+	if !ok {
+		log.Fatal("Could not find database URI")
+	}
 }
 
 func getBotID(botName string, sc *slack.Client) (botID string) {

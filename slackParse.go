@@ -1,5 +1,14 @@
 /*
-Text parsing for
+All RTM messages are sent here in order to be parsed. All commands are of one
+of three types:
+
+1. Message at bot > command function
+2. Bookmark query of format <bookmark>? [one word long]
+3. any other message, which is parsed for karma, or shame
+
+Because all messages are either logs or printed to slack, a slack client is
+defined at the main package in order to reduce passing the slack client around
+
 
 
 Released under MIT license, copyright 2018 Tyler Ramer
@@ -21,6 +30,8 @@ import (
 // set URL for expansion here
 // TODO: change to OS env variable
 const baseURL = "http://example.com/"
+
+// Timeout in seconds to prevent karma spam
 const timeout = 5 * 60
 
 type response struct {
@@ -71,6 +82,8 @@ func parse(ev *slack.MessageEvent) (err error) {
 	return nil
 }
 
+// regex match and take appropriate action on words in a sentance. This only gets executed if
+// the message is not deemed some other "type" of interation - like a command to the bot
 func handleWord(ev *slack.MessageEvent, words []string) (err error) {
 
 	var s string
@@ -132,7 +145,7 @@ func handleWord(ev *slack.MessageEvent, words []string) (err error) {
 		message = strings.Join(retArray[:], "")
 	}
 	var r = response{message, ev.User, ev.Channel, false, false}
-	err = scPrint(r)
+	err = slackPrint(r)
 	if err != nil {
 		log.Error("unable to print message to slack")
 		return err
@@ -141,7 +154,8 @@ func handleWord(ev *slack.MessageEvent, words []string) (err error) {
 
 }
 
-func scPrint(r response) (err error) {
+// Print messages to slack. Accepts response struct and returns any errors on the print
+func slackPrint(r response) (err error) {
 	switch {
 	case r.isEphemeral:
 		_, err = postEphemeral(rtm, r.channel, r.user, r.message)
