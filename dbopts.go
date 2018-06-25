@@ -89,8 +89,25 @@ func createAlsoTable() {
 	}
 }
 
-func karmaRank() {
+func karmaRank(k karmaVal) karmaVal {
 
+	var result int
+	var err error
+	if k.shame {
+		err = db.QueryRow("SELECT shame FROM people WHERE name=$1", k.name).Scan(&result)
+	} else {
+		err = db.QueryRow("SELECT karma FROM people WHERE name=$1", k.name).Scan(&result)
+	}
+
+	if err != nil {
+		if err == sql.ErrNoRows {
+			log.WithField("name", k.name).Debug("No karma or shame for this user yet")
+			k.points = 0
+		}
+		log.Fatal(err)
+	}
+	k.points = result
+	return k
 }
 
 // Handles karma up/down and shame operations

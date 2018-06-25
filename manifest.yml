@@ -3,5 +3,5 @@ applications:
         - name: KarmaBoi-Go
           buildpack: go_buildpack
           env:
-                  GOVERSION: go1.9.3
+                  GOVERSION: go1.10.3
                   GOPACKAGENAME: KarmaBoi-Go

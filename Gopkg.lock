@@ -15,9 +15,18 @@
 
 [[projects]]
   branch = "master"
+  name = "github.com/lib/pq"
+  packages = [
+    ".",
+    "oid"
+  ]
+  revision = "90697d60dd844d5ef6ff15135d0203f65d2f53b8"
+
+[[projects]]
+  branch = "master"
   name = "github.com/mitchellh/mapstructure"
   packages = ["."]
-  revision = "00c29f56e2386353d58c599509e8dc3801b0d716"
+  revision = "bb74f1db0675b241733089d5a1faa5dd8b0ef57b"
 
 [[projects]]
   name = "github.com/nlopes/slack"
@@ -35,13 +44,13 @@
   branch = "master"
   name = "github.com/tylarb/TimeCache"
   packages = ["."]
-  revision = "6cacb12b447e06b9897702b7e420d4b6bd78a184"
+  revision = "985149a31c19e2afdbfa0b14077914f70a6d31d3"
 
 [[projects]]
   branch = "master"
   name = "golang.org/x/crypto"
   packages = ["ssh/terminal"]
-  revision = "182114d582623c1caa54f73de9c7224e23a48487"
+  revision = "a49355c7e3f8fe157a85be2f77e6e269a0f89602"
 
 [[projects]]
   branch = "master"
@@ -50,11 +59,11 @@
     "unix",
     "windows"
   ]
-  revision = "c28acc882ebcbfbe8ce9f0f14b9ac26ee138dd51"
+  revision = "a200a19cb90b19de298170992778b1fda7217bd6"
 
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "8b8a743df55481d425e834923de531bea5af33914a3ee3584e1afa8a40f93fc3"
+  inputs-digest = "7525af20d54f4091d7188fb14f5fe72a11f9e298eab511055248285217d4e8c1"
   solver-name = "gps-cdcl"
   solver-version = 1

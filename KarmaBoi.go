@@ -9,7 +9,9 @@ Released under MIT license, copyright 2018 Tyler Ramer
 package main
 
 import (
+	"math/rand"
 	"os"
+	"time"
 
 	log "github.com/sirupsen/logrus"
 
@@ -60,6 +62,7 @@ func init() {
 	if !ok {
 		log.Fatal("Could not find database URI")
 	}
+	dbConnect()
 }
 
 func getBotID(botName string, sc *slack.Client) (botID string) {
@@ -77,6 +80,8 @@ func getBotID(botName string, sc *slack.Client) (botID string) {
 }
 
 func main() {
+	rand.Seed(time.Now().Unix())
+
 	sc = slack.New(slackBotToken)
 	botID = getBotID(slackBotName, sc)
 	log.WithField("ID", botID).Debug("Bot ID returned")
