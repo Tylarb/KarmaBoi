@@ -44,7 +44,7 @@
   branch = "master"
   name = "github.com/tylarb/TimeCache"
   packages = ["."]
-  revision = "985149a31c19e2afdbfa0b14077914f70a6d31d3"
+  revision = "a41aeaee81b450e1e1cdd3abcdcbb5d6bb890a15"
 
 [[projects]]
   branch = "master"
@@ -59,7 +59,7 @@
     "unix",
     "windows"
   ]
-  revision = "a200a19cb90b19de298170992778b1fda7217bd6"
+  revision = "c4afb3effaa53fd9a06ca61262dc7ce8df4c081b"
 
 [solve-meta]
   analyzer-name = "dep"

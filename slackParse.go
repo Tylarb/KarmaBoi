@@ -22,6 +22,7 @@ import (
 	"math/rand"
 	"regexp"
 	"strings"
+	"time"
 
 	"github.com/nlopes/slack"
 	log "github.com/sirupsen/logrus"
@@ -44,32 +45,29 @@ type response struct {
 }
 
 type karmaVal struct {
-	name   string
-	points int
-	shame  bool
+	name    string
+	points  int
+	shame   bool
+	present bool // is the name present in the database
+}
+
+type cacheKey struct {
+	*string
 }
 
 var cache = timeCache.NewSliceCache(timeout)
+var cache2 timeCache.DictCache
 
 // regex definitions
 
-// name++
-var karmaUp = regexp.MustCompile(`.+\+{2}$`)
-
-// name--
-var karmaDown = regexp.MustCompile(`.+-{2}$`)
-
-// name~~
-var shameUp = regexp.MustCompile(`.+~{2}$`)
-
-// not word characters (== [^0-9A-Za-z_])
-var nonKarmaWord = regexp.MustCompile(`^\W+$`)
-
-// single character (so we exclude, for example, c++)
-var nonKarmaSingle = regexp.MustCompile(`^.{1}$`)
-
-// "permissions" such as -rwxr-xr--
-var nonKarmaPermission = regexp.MustCompile(`^[-d][-rwx]+$`)
+var (
+	karmaUp            = regexp.MustCompile(`.+\+{2}$`)      // name++
+	karmaDown          = regexp.MustCompile(`.+-{2}$`)       //name--
+	shameUp            = regexp.MustCompile(`.+~{2}$`)       // name~~
+	nonKarmaWord       = regexp.MustCompile(`^\W+$`)         // not word characters (== [^0-9A-Za-z_])
+	nonKarmaSingle     = regexp.MustCompile(`^.{1}$`)        // single character (so we exclude, for example, c++)
+	nonKarmaPermission = regexp.MustCompile(`^[-d][-rwx]+$`) // "permissions" such as -rwxr-xr--
+)
 
 // 5 number long, beginning with 7 or 8
 var caseID = regexp.MustCompile(`^[7-8][0-9]{4,4}$`)
@@ -111,12 +109,15 @@ func parse(ev *slack.MessageEvent) (err error) {
 // the message is not deemed some other "type" of interation - like a command to the bot
 func handleWord(ev *slack.MessageEvent, words []string) (err error) {
 
-	var s string
-	var count int
-	var k karmaVal
-	// TODO: Remove name here
-	var name string
-	var message string
+	var (
+		s       string
+		count   int
+		message string
+		k       *karmaVal
+		key     string    // key = user + target to prevent vote spam
+		tc      bool      // time key was added to the cache
+		r       time.Time // time remaining until able to be upvoted
+	)
 
 	retArray := []string{}
 	caseLinks := []string{}
@@ -125,35 +126,52 @@ func handleWord(ev *slack.MessageEvent, words []string) (err error) {
 		switch {
 
 		case karmaUp.MatchString(word):
-			k.name = strings.Trim(word, "+")
+			k = newKarma(strings.Trim(word, "+"), false)
 			if !validKarmaCheck(k.name) {
 				continue
 			}
-			k.points, err = karmaAdd(name) // TODO: use karmaAdd (k karmaVal)
-			s = responseGen(k)
+			key = keygen(ev.User, k.name)
+			tc, r = cache.Contains(key)
+			if tc {
+				timeWarn(ev, k.name, r)
+			} else {
+				k.modify(true)
+				s = responseGen(k)
+				retArray = append(retArray, s)
+			}
 			count++
-			retArray = append(retArray, s)
 
 		case karmaDown.MatchString(word):
-			k.name = strings.Trim(word, "-")
-			k.points, err = karmaSub(name)
+			k = newKarma(strings.Trim(word, "-"), false)
 			if !validKarmaCheck(k.name) {
 				continue
 			}
-			s = responseGen(k)
+			key = keygen(ev.User, k.name)
+			tc, r = cache.Contains(key)
+			if tc {
+				timeWarn(ev, k.name, r)
+			} else {
+				k.modify(false)
+				s = responseGen(k)
+				retArray = append(retArray, s)
+			}
 			count++
-			retArray = append(retArray, s)
 
 		case shameUp.MatchString(word):
-			k.name = strings.Trim(word, "~")
+			k = newKarma(strings.Trim(word, "~"), true)
 			if !validKarmaCheck(k.name) {
 				continue
 			}
-			k.points, err = shameAdd(name)
-			k.shame = true
-			s = responseGen(k)
+			key = keygen(ev.User, k.name)
+			tc, r = cache.Contains(key)
+			if tc {
+				timeWarn(ev, k.name, r)
+			} else {
+				k.modify(true)
+				s = responseGen(k)
+				retArray = append(retArray, s)
+			}
 			count++
-			retArray = append(retArray, s)
 
 		case caseID.MatchString(word):
 			caseLinks = append(caseLinks, baseURL, word, "\n")
@@ -175,8 +193,8 @@ func handleWord(ev *slack.MessageEvent, words []string) (err error) {
 		retArray = append(retArray, caseLinks[:]...)
 		message = strings.Join(retArray[:], "")
 	}
-	var r = response{message, ev.User, ev.Channel, false, false}
-	err = slackPrint(r)
+	var retMessage = response{message, ev.User, ev.Channel, false, false}
+	err = slackPrint(retMessage)
 	if err != nil {
 		log.WithField("Err", err).Error("unable to print message to slack")
 		return err
@@ -188,16 +206,16 @@ func handleWord(ev *slack.MessageEvent, words []string) (err error) {
 // Commands directed at the bot
 func handleCommand(ev *slack.MessageEvent, words []string) error {
 	retArray := []string{}
-	var k karmaVal
 	var message string
 	var s string
 	var err error
+	var k *karmaVal
 
 	// individual rankings
 	if len(words) > 2 && words[1] == "rank" {
 		for i := 2; i < len(words); i++ {
-			k = karmaVal{words[i], 0, false}
-			k = karmaRank(k)
+			k = newKarma(words[i], false)
+			k.rank()
 			s = responseGen(k)
 			retArray = append(retArray, s)
 		}
@@ -224,19 +242,27 @@ func slackPrint(r response) (err error) {
 	return
 }
 
-func karmaAdd(name string) (karma int, err error) {
-	return 1, nil
+func timeWarn(ev *slack.MessageEvent, n string, t time.Time) {
+	tRemain := time.Duration(timeout)*time.Second - time.Since(t)
+	message := fmt.Sprintf("Please wait %v before adjusting the karma of %s", tRemain, n)
+	var r = response{message, ev.User, ev.Channel, true, false}
+	slackPrint(r)
 }
 
-func karmaSub(name string) (karma int, err error) {
-	return 1, nil
+func newKarma(name string, shame bool) *karmaVal {
+	k := new(karmaVal)
+	k.name = name
+	k.shame = shame
+	return k
 }
 
-func shameAdd(name string) (karma int, err error) {
-	return 1, nil
+func keygen(u string, t string) string {
+	s := []string{u, t}
+	k := strings.Join(s, "-")
+	return k
 }
 
-func responseGen(k karmaVal) (s string) {
+func responseGen(k *karmaVal) (s string) {
 	if k.shame {
 		if k.points == 1 {
 			s = fmt.Sprintf("What is done cannot be undone. %s now has shame forever\n", k.name)
