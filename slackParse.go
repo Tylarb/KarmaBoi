@@ -56,7 +56,6 @@ type cacheKey struct {
 }
 
 var cache = timeCache.NewSliceCache(timeout)
-var cache2 timeCache.DictCache
 
 // regex definitions
 
@@ -136,7 +135,7 @@ func handleWord(ev *slack.MessageEvent, words []string) (err error) {
 				timeWarn(ev, k.name, r)
 			} else {
 				k.modify(true)
-				s = responseGen(k)
+				s = responseGen(k, 0)
 				retArray = append(retArray, s)
 			}
 			count++
@@ -152,7 +151,7 @@ func handleWord(ev *slack.MessageEvent, words []string) (err error) {
 				timeWarn(ev, k.name, r)
 			} else {
 				k.modify(false)
-				s = responseGen(k)
+				s = responseGen(k, 0)
 				retArray = append(retArray, s)
 			}
 			count++
@@ -168,7 +167,7 @@ func handleWord(ev *slack.MessageEvent, words []string) (err error) {
 				timeWarn(ev, k.name, r)
 			} else {
 				k.modify(true)
-				s = responseGen(k)
+				s = responseGen(k, 0)
 				retArray = append(retArray, s)
 			}
 			count++
@@ -210,13 +209,18 @@ func handleCommand(ev *slack.MessageEvent, words []string) error {
 	var s string
 	var err error
 	var k *karmaVal
+	var rank int
 
-	// individual rankings
-	if len(words) > 2 && words[1] == "rank" {
+	switch {
+	case len(words) > 2 && words[1] == "rank": // individual karma rankings
 		for i := 2; i < len(words); i++ {
 			k = newKarma(words[i], false)
-			k.rank()
-			s = responseGen(k)
+			k.ask()
+			rank = k.rank()
+			if rank == 0 {
+				continue
+			}
+			s = responseGen(k, rank)
 			retArray = append(retArray, s)
 		}
 		message = strings.Join(retArray[:], "")
@@ -225,6 +229,19 @@ func handleCommand(ev *slack.MessageEvent, words []string) error {
 		if err != nil {
 			log.WithField("Err", err).Error("unable to print message to slack")
 		}
+	case len(words) > 2 && words[1] == "rank~": // individual shame ranking
+		for i := 2; i < len(words); i++ {
+			k = newKarma(words[i], true)
+			k.ask()
+			rank = k.rank()
+			if rank == 0 {
+				continue
+			}
+			s = responseGen(k, rank)
+			retArray = append(retArray, s)
+		}
+	case len(words) == 2 && words[1] == "rank":
+
 	}
 
 	return nil
@@ -262,16 +279,23 @@ func keygen(u string, t string) string {
 	return k
 }
 
-func responseGen(k *karmaVal) (s string) {
-	if k.shame {
-		if k.points == 1 {
+func responseGen(k *karmaVal, rank int) (s string) {
+	if rank != 0 {
+		switch {
+		case k.shame && k.points == 1:
 			s = fmt.Sprintf("What is done cannot be undone. %s now has shame forever\n", k.name)
-			return
+		case k.shame:
+			s = fmt.Sprintf("%s now has %d points of shame\n", k.name, k.points)
+		default:
+			s = fmt.Sprintf("%s now has %d points of karma\n", k.name, k.points)
 		}
-		s = fmt.Sprintf("%s now has %d points of shame\n", k.name, k.points)
-		return
+	} else {
+		if k.shame {
+			s = fmt.Sprintf("%s is rank %d with %d points of shame\n", k.name, rank, k.points)
+		} else {
+			s = fmt.Sprintf("%s is rank %d with %d points of shame\n", k.name, rank, k.points)
+		}
 	}
-	s = fmt.Sprintf("%s now has %d points of karma\n", k.name, k.points)
 	return
 }
 

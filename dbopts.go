@@ -89,8 +89,8 @@ func createAlsoTable() {
 	}
 }
 
-// karmaRank accepts k karmaval and returns a karmaVal with k.points updated
-func (k *karmaVal) rank() {
+// karmaVal.ask accepts k karmaval and returns a karmaVal with k.points updated
+func (k *karmaVal) ask() {
 
 	var result int
 	var err error
@@ -114,11 +114,31 @@ func (k *karmaVal) rank() {
 	k.present = present
 }
 
+// karmaVal.rank returns the overall ranking of an individual entered as an INT. Does not
+// return the actual karma of the indivitual, or 0 if user is not in DB
+func (k *karmaVal) rank() int {
+	var result int
+	var err error
+	if k.shame {
+		err = db.QueryRow("SELECT (SELECT COUNT(*) FROM people AS t2 WHERE t2.shame > t1.shame) AS row_Num FROM people as t1 WHERE name=$1", k.name).Scan(&result)
+	} else {
+		err = db.QueryRow("SELECT (SELECT COUNT(*) FROM people AS t2 WHERE t2.karma > t1.karma) AS row_Num FROM people as t1 WHERE name=$1", k.name).Scan(&result)
+	}
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return result
+		}
+		log.Error("issue getting RANK from the people database")
+		log.Fatal(err)
+	}
+	return result + 1
+}
+
 // Handles moving karma or shame up or down. Accepts k karmaVal with k.name entered and an up/down
 // flag, then returns updated karmaVal struct with points updated.
 func (k *karmaVal) modify(upvote bool) {
 	var err error
-	k.rank()
+	k.ask()
 	if upvote {
 		k.points++
 	} else {
@@ -149,10 +169,63 @@ func (k *karmaVal) modify(upvote bool) {
 	}
 }
 
-func isAlsoAsk() {
+//TODO Finish this
+func globalRank(kind string) {
+	var (
+		name  string
+		karma string
+		err   error
+		rows  *sql.Rows
+	)
+	switch {
+	case kind == "top":
+		rows, err = db.Query("SELECT name, karma FROM people ORDER BY karma DESC LIMIT 5")
+		if err != nil {
+			log.Error("Error selecting top karma from DB")
+			log.Fatal(err)
+		}
+	case kind == "bottom":
+	case kind == "shame":
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		err := rows.Scan(&name, &karma)
+		if err != nil {
+			log.Fatal(err)
+		}
+
+	}
+	err = rows.Err()
+	if err != nil {
+		log.Fatal(err)
+	}
 
 }
 
-func isAlsoAdd() {
+// isAlsoAsk queries isAlso table in DB for a random entry of the inputed name, n. Returns empty string
+// if value is not in the table
+func isAlsoAsk(n string) string {
+	var err error
+	var result string
+	err = db.QueryRow("SELECT also FROM isalso WHERE name=$1 ORDER BY RANDOM() LIMIT 1", n).Scan(&result)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return ""
+		}
+		log.Error("There wa some error selecting value from the Also table")
+		log.Fatal(err)
+	}
+	return result
+}
 
+// isAlsoAdd adds an "also" value to the database
+func isAlsoAdd(n string, also string) {
+	var err error
+	_, err = db.Exec("INSERT INTO isalso(name,also) VALUES ($1,$2)", n, also)
+	if err != nil {
+		log.Error("There was an error inserting into the isalso table")
+		log.Fatal(err)
+	}
+	log.WithField("name", n).WithField("value", also).Debug("Added to also table")
 }
