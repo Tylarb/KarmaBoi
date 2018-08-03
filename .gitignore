@@ -7,7 +7,7 @@
 *.dylib
 bin/*
 init.sh
-vendor/
+vendor/*
 
 # Test binary, build with `go test -c`
 *.test
