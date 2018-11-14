@@ -1,7 +1,8 @@
 ---
 applications:
-        - name: KarmaBoi-Go
+        - name: KarmaBoi
+          command: ./bin/KarmaBoi
           buildpack: go_buildpack
           env:
                   GOVERSION: go1.10.5
-                  GOPACKAGENAME: KarmaBoi-Go
+                  GOPACKAGENAME: KarmaBoi

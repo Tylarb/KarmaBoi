@@ -106,7 +106,7 @@ func parse(ev *slack.MessageEvent) (err error) {
 		log.Debug("Bot sent a message which is ignored")
 		return nil
 	}
-	if strings.Contains(ev.Text, "beer") {
+	if strings.Contains(ev.Text, "beer") || strings.Contains(ev.Text, "I need a drink") {
 		resp := slack.ItemRef{Channel: ev.Channel, Timestamp: ev.Timestamp}
 		sc.AddReaction("beers", resp)
 	}
