@@ -20,6 +20,12 @@ const (
 	alsoTable   = "CREATE TABLE IF NOT EXISTS isalso(id SERIAL PRIMARY KEY, name TEXT, also TEXT);"
 )
 
+// upvotes or downvotes
+const (
+	UP = iota
+	DOWN
+)
+
 // Define a global db connection. We don't need to close the db conn - if there's an error we'll try
 // to recreate the db connection, but otherwise we don't intend to trash it
 var db *sql.DB
@@ -136,14 +142,16 @@ func (k *karmaVal) rank() int {
 
 // Handles moving karma or shame up or down. Accepts k karmaVal with k.name entered and an up/down
 // flag, then returns updated karmaVal struct with points updated.
-func (k *karmaVal) modify(upvote bool) {
+func (k *karmaVal) modify(vote int) {
 	var err error
 	k.ask()
-	if upvote {
+	switch {
+	case vote == UP:
 		k.points++
-	} else {
+	case vote == DOWN:
 		k.points--
 	}
+
 	if k.present {
 		if k.shame {
 			_, err = db.Exec("UPDATE people SET shame = $1 WHERE name = $2", k.points, k.name)
@@ -170,37 +178,51 @@ func (k *karmaVal) modify(upvote bool) {
 }
 
 //TODO Finish this
-func globalRank(kind string) {
+func globalRank(kind int) []karmaVal {
 	var (
 		name  string
-		karma string
+		karma int
 		err   error
 		rows  *sql.Rows
 	)
 	switch {
-	case kind == "top":
+	case kind == TOP:
 		rows, err = db.Query("SELECT name, karma FROM people ORDER BY karma DESC LIMIT 5")
 		if err != nil {
 			log.Error("Error selecting top karma from DB")
 			log.Fatal(err)
 		}
-	case kind == "bottom":
-	case kind == "shame":
+	case kind == BOTTOM:
+		rows, err = db.Query("SELECT name, karma FROM people ORDER BY karma ASC LIMIT 5")
+		if err != nil {
+			log.Error("Error selecting bottom karma from DB")
+			log.Fatal(err)
+		}
+	case kind == SHAME:
+		rows, err = db.Query("SELECT name, shame FROM people ORDER BY shame DESC LIMIT 5")
+		if err != nil {
+			log.Error("Error selecting top shame from DB")
+			log.Fatal(err)
+		}
+
 	}
 	defer rows.Close()
 
+	out := make([]karmaVal, 5)
+	i := 0
 	for rows.Next() {
 		err := rows.Scan(&name, &karma)
 		if err != nil {
 			log.Fatal(err)
 		}
-
+		out[i] = karmaVal{name: name, points: karma}
+		i++
 	}
 	err = rows.Err()
 	if err != nil {
 		log.Fatal(err)
 	}
-
+	return out
 }
 
 // isAlsoAsk queries isAlso table in DB for a random entry of the inputed name, n. Returns empty string
@@ -216,6 +238,7 @@ func isAlsoAsk(n string) string {
 		log.Error("There wa some error selecting value from the Also table")
 		log.Fatal(err)
 	}
+	log.WithField("name", n).Debug("Found value in isalso table")
 	return result
 }
 

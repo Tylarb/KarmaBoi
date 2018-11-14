@@ -30,8 +30,8 @@
   unused-packages = true
 
 [[constraint]]
+  branch = "master"
   name = "github.com/nlopes/slack"
-  version = "0.2.0"
 
 [[constraint]]
   branch = "master"
