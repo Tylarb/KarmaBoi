@@ -8,7 +8,7 @@ It's now fully re-written in Golang, and features more features! Keep reading to
 
 ## Requirements and installation:
 
-Add a [bot name and token](https://api.slack.com/bot-users) as environemtn variables `SLACK_BOT_NAME` and `SLACK_BOT_TOKEN`. 
+Add a [bot name and token](https://api.slack.com/bot-users) as environment variables `SLACK_BOT_NAME` and `SLACK_BOT_TOKEN`. 
 
 KarmaBoi requires a Postgres Database. Currently it's hard coded to an [elephantsql](https://docs.run.pivotal.io/marketplace/services/elephantsql.html) instance. So make sure you have that. Or fix/improve it.
 
