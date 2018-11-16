@@ -89,7 +89,9 @@ func getPrize(ev *slack.MessageEvent, k *karmaVal) {
 			prize = prizes[rand.Intn(len(prizes))]
 		}
 	}
-	go printPrize(ev, prize)
+	if prize != "" {
+		go printPrize(ev, prize)
+	}
 }
 
 func printPrize(ev *slack.MessageEvent, prize string) {
