@@ -4,12 +4,14 @@ package main
 
 import (
 	"math/rand"
+	"strings"
+	"time"
 
 	"github.com/nlopes/slack"
 )
 
 const (
-	ePrize = "```" + `
+	ePrize = `
 	    ___     _,.--.,_
      .-~   ~--"~-.   ._ "-.
     /      ./_    Y    "-. \
@@ -28,9 +30,9 @@ const (
  \___/|_| |_|\___|  \__,_| .__/
 					   | |
 					   |_|
-` + "```"
+`
 
-	rPrize = "```" + `
+	rPrize = `
 			  ,
 			 /|      __
 		    / |   ,-~ /
@@ -57,9 +59,9 @@ const (
 |  \_/|| | \|||  /_   | \_/||  __/
  \____/\_/  \|\____\  \____/\_/
 
-` + "```"
+`
 
-	aPrize = "```" + `
+	aPrize = `
 ________________________________
   __   __ _  ____    _  _  ____ \      ------
  /  \ (  ( \(  __)  / )( \(  _ \ \    | | # \                                 |
@@ -71,7 +73,7 @@ ________________________________/            ^^------____--""""""+""--_  __--"|
 															   <- O -)
 																 '"'
   
-` + "```"
+`
 )
 
 func getPrize(ev *slack.MessageEvent, k *karmaVal) {
@@ -87,6 +89,18 @@ func getPrize(ev *slack.MessageEvent, k *karmaVal) {
 			prize = prizes[rand.Intn(len(prizes))]
 		}
 	}
-	r := response{message: prize, channel: ev.Channel}
-	slackPrint(r)
+	go printPrize(ev, prize)
+}
+
+func printPrize(ev *slack.MessageEvent, prize string) {
+	channel, timestamp, _ := sc.PostMessage(ev.Channel, slack.MsgOptionAsUser(true), slack.MsgOptionText("beep beep whirrrree", false))
+	linebyline := strings.Split(prize, "\n")
+	completedImage := []string{}
+	for _, line := range linebyline {
+		time.Sleep(200 * time.Millisecond)
+		completedImage = append(completedImage, line)
+		image := "```" + strings.Join(completedImage, "\n") + "```"
+		sc.UpdateMessage(channel, timestamp, slack.MsgOptionText(image, false))
+	}
+
 }
