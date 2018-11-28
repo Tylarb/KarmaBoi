@@ -114,7 +114,7 @@ func parse(ev *slack.MessageEvent) (err error) {
 		resp := slack.ItemRef{Channel: ev.Channel, Timestamp: ev.Timestamp}
 		sc.AddReaction("wine_glass", resp)
 	}
-	words := strings.Split(ev.Text, " ")
+	words := strings.Fields(ev.Text)
 	switch {
 	case words[0] == atBot:
 		log.WithField("Message", ev.Text).Debug("Instuction for bot")
