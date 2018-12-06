@@ -26,7 +26,7 @@ import (
 
 	"github.com/nlopes/slack"
 	log "github.com/sirupsen/logrus"
-	"github.com/tylarb/TimeCache"
+	timeCache "github.com/tylarb/TimeCache"
 )
 
 // set URL for expansion here
@@ -113,6 +113,9 @@ func parse(ev *slack.MessageEvent) (err error) {
 	if strings.Contains(ev.Text, "wine") {
 		resp := slack.ItemRef{Channel: ev.Channel, Timestamp: ev.Timestamp}
 		sc.AddReaction("wine_glass", resp)
+	}
+	if ev.Text == "" {
+		return nil
 	}
 	words := strings.Fields(ev.Text)
 	switch {
