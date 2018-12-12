@@ -225,9 +225,6 @@ func handleWord(ev *slack.MessageEvent, words []string) (err error) {
 				retArray = append(retArray, s)
 			}
 			count++
-
-		case caseID.MatchString(word):
-			caseLinks = append(caseLinks, baseURL, word, "\n")
 		}
 	}
 	if err != nil {
