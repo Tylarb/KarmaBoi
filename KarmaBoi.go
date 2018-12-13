@@ -98,6 +98,9 @@ func main() {
 		case *slack.MessageEvent:
 			log.WithFields(log.Fields{"Channel": ev.Channel, "message": ev.Text}).Debug("message event:")
 			// send message to parser func
+			if ev.Text == "" {
+				continue
+			}
 			err := parse(ev)
 			if err != nil {
 				log.WithField("ERROR", err).Error("parse message failed")
