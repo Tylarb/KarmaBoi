@@ -15,7 +15,7 @@ import (
 
 	log "github.com/sirupsen/logrus"
 
-	"github.com/cloudfoundry-community/go-cfenv"
+	cfenv "github.com/cloudfoundry-community/go-cfenv"
 	"github.com/nlopes/slack"
 )
 
@@ -130,7 +130,6 @@ func postEphemeral(rtm *slack.RTM, channel, user, text string) (string, error) {
 		channel,
 		user,
 		slack.MsgOptionText(text, params.EscapeText),
-		slack.MsgOptionAttachments(params.Attachments...),
 		slack.MsgOptionPostMessageParameters(params),
 	)
 }
